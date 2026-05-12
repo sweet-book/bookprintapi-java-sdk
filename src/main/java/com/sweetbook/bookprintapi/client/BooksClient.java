@@ -65,28 +65,51 @@ public class BooksClient {
      * @param title          제목 (선택)
      * @param creationType   "TEMPLATE" / "PDF_UPLOAD" / "MIX_COVER_TEMPLATE" — 미지정 시 "TEMPLATE"
      * @param externalRef    외부 참조 ID (선택, 최대 100자)
+     * @param pageCount      내지 페이지수. {@code creationType} 이
+     *                       {@code PDF_UPLOAD} / {@code MIX_COVER_TEMPLATE} 일 때 <b>필수</b>(&gt;0).
+     *                       {@code TEMPLATE} 모드에서는 서버가 무시. {@code null} 허용.
      * @return 응답 본문 JSON
      */
-    public JsonNode create(String bookSpecUid, String title, String creationType, String externalRef) {
+    public JsonNode create(String bookSpecUid, String title, String creationType,
+                           String externalRef, Integer pageCount) {
         if (bookSpecUid == null || bookSpecUid.isEmpty()) {
             throw new IllegalArgumentException("bookSpecUid is required");
         }
+        String effectiveCreationType = creationType != null ? creationType : "TEMPLATE";
+        if (("PDF_UPLOAD".equals(effectiveCreationType) || "MIX_COVER_TEMPLATE".equals(effectiveCreationType))
+                && (pageCount == null || pageCount <= 0)) {
+            throw new IllegalArgumentException(
+                "creationType=" + effectiveCreationType + " 는 pageCount(내지 페이지수, >0)가 필수입니다.");
+        }
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("bookSpecUid", bookSpecUid);
-        body.put("creationType", creationType != null ? creationType : "TEMPLATE");
+        body.put("creationType", effectiveCreationType);
         if (title != null) body.put("title", title);
         if (externalRef != null) body.put("externalRef", externalRef);
+        if (pageCount != null) body.put("pageCount", pageCount);
         return http.post("/books", body);
     }
 
     /**
-     * 편의 — TEMPLATE 모드, externalRef 없음.
+     * 호환 오버로드 (v0.2.0 시그니처) — TEMPLATE 모드 또는 pageCount 불필요 시 사용.
+     * @param bookSpecUid 상품 규격 UID
+     * @param title 책 제목
+     * @param creationType 생성 방식
+     * @param externalRef 외부 참조 ID
+     * @return 응답 본문 JSON
+     */
+    public JsonNode create(String bookSpecUid, String title, String creationType, String externalRef) {
+        return create(bookSpecUid, title, creationType, externalRef, null);
+    }
+
+    /**
+     * 편의 — TEMPLATE 모드, externalRef/pageCount 없음.
      * @param bookSpecUid 상품 규격 UID
      * @param title 책 제목
      * @return 응답 본문 JSON
      */
     public JsonNode create(String bookSpecUid, String title) {
-        return create(bookSpecUid, title, "TEMPLATE", null);
+        return create(bookSpecUid, title, "TEMPLATE", null, null);
     }
 
     /**

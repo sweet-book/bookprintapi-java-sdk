@@ -66,6 +66,76 @@ class BooksClientTest extends AbstractClientTestBase {
     }
 
     @Test
+    void create_pdfUploadRequiresPageCount() {
+        BooksClient client = new BooksClient(transport());
+        // pageCount null → 거부
+        IllegalArgumentException e1 = assertThrows(IllegalArgumentException.class,
+            () -> client.create("SQUAREBOOK_HC", "t", "PDF_UPLOAD", null, null));
+        assertTrue(e1.getMessage().contains("pageCount"));
+        // pageCount 0 → 거부
+        assertThrows(IllegalArgumentException.class,
+            () -> client.create("SQUAREBOOK_HC", "t", "PDF_UPLOAD", null, 0));
+        // pageCount -1 → 거부
+        assertThrows(IllegalArgumentException.class,
+            () -> client.create("SQUAREBOOK_HC", "t", "PDF_UPLOAD", null, -1));
+    }
+
+    @Test
+    void create_pdfUploadPassesPageCount() {
+        respond("/books", 200, "{\"success\":true,\"data\":{\"bookUid\":\"pdf1\"}}");
+        BooksClient client = new BooksClient(transport());
+        JsonNode resp = client.create("SQUAREBOOK_HC", "p", "PDF_UPLOAD", null, 24);
+        assertEquals("pdf1", resp.path("data").path("bookUid").asText());
+
+        String reqBody = recorded.get(0).body;
+        assertTrue(reqBody.contains("\"creationType\":\"PDF_UPLOAD\""));
+        assertTrue(reqBody.contains("\"pageCount\":24"));
+    }
+
+    @Test
+    void create_mixCoverTemplateRequiresPageCount() {
+        BooksClient client = new BooksClient(transport());
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+            () -> client.create("SQUAREBOOK_HC", "t", "MIX_COVER_TEMPLATE", null, null));
+        assertTrue(e.getMessage().contains("pageCount"));
+    }
+
+    @Test
+    void create_mixCoverTemplatePassesPageCount() {
+        respond("/books", 200, "{\"success\":true,\"data\":{\"bookUid\":\"mix1\"}}");
+        BooksClient client = new BooksClient(transport());
+        JsonNode resp = client.create("SQUAREBOOK_HC", "m", "MIX_COVER_TEMPLATE", "ext-1", 12);
+        assertEquals("mix1", resp.path("data").path("bookUid").asText());
+
+        String reqBody = recorded.get(0).body;
+        assertTrue(reqBody.contains("\"creationType\":\"MIX_COVER_TEMPLATE\""));
+        assertTrue(reqBody.contains("\"pageCount\":12"));
+        assertTrue(reqBody.contains("\"externalRef\":\"ext-1\""));
+    }
+
+    @Test
+    void create_templateModeIgnoresPageCountRequirement() {
+        // TEMPLATE 모드에서는 pageCount 없어도 통과
+        respond("/books", 200, "{\"success\":true,\"data\":{\"bookUid\":\"tpl1\"}}");
+        BooksClient client = new BooksClient(transport());
+        client.create("SQUAREBOOK_HC", "t", "TEMPLATE", null, null);
+        String reqBody = recorded.get(0).body;
+        assertTrue(reqBody.contains("\"creationType\":\"TEMPLATE\""));
+        assertTrue(!reqBody.contains("\"pageCount\""));
+    }
+
+    @Test
+    void create_v020CompatOverloadStillWorks() {
+        // v0.2.0 시그니처(4-arg) 호환 확인
+        respond("/books", 200, "{\"success\":true,\"data\":{\"bookUid\":\"compat1\"}}");
+        BooksClient client = new BooksClient(transport());
+        client.create("SQUAREBOOK_HC", "t", "TEMPLATE", "ext-2");
+        String reqBody = recorded.get(0).body;
+        assertTrue(reqBody.contains("\"externalRef\":\"ext-2\""));
+        assertTrue(!reqBody.contains("\"pageCount\""));
+    }
+
+    @Test
     void get_singleResource() {
         respond("/books/abc", 200, "{"
                 + "\"success\":true,"

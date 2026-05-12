@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.2.1 (2026-05-12)
+
+### Fixed — `BooksClient.create()` 에 `pageCount` 파라미터 추가
+
+`creationType=PDF_UPLOAD` / `MIX_COVER_TEMPLATE` 시 서버가 `pageCount` 필수로 요구하나 기존 시그니처가 받지 않아 사용자가 raw HTTP 우회가 필요했던 갭 보정.
+
+- **`create(String bookSpecUid, String title, String creationType, String externalRef, Integer pageCount)`** 신규 5-arg 오버로드
+- v0.2.0 의 4-arg `create(...)` 와 2-arg `create(bookSpecUid, title)` 오버로드는 그대로 유지 — 후방호환
+- `creationType` 이 `PDF_UPLOAD` / `MIX_COVER_TEMPLATE` 인데 `pageCount` 가 `null` / `<=0` 이면 즉시 `IllegalArgumentException`
+- `creationType=TEMPLATE` 에서 `pageCount` 를 줘도 payload 에 포함만 함 (서버가 무시)
+
+### Backward compatibility
+
+기존 호출자는 영향 없음. 신규 호출자는 PDF_UPLOAD/MIX_COVER_TEMPLATE 사용 시 5-arg 오버로드 권장.
+
 ## 0.2.0 (2026-05-11) — 첫 public 릴리즈
 
 bookprintapi-java-sdk 첫 외부 공개판. v0.1.0 으로 계획되어 있던 카탈로그/sub-client/헬퍼 + v0.2.0 으로 계획되어 있던 list envelope 호환 강화를 한 번에 묶어 첫 public 발행.
